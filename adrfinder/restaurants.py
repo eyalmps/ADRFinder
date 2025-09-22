@@ -132,22 +132,39 @@ class Restaurants(object):
 
         return restaurant_results
 
+# replace get_search_times() body with a safer version
     def get_search_times(self):
         """
         Get the valid search times => values from disney dining page
         """
-
         dining_data = self.get_dining_data()
-
         search_times = OrderedDict()
 
-        for mealPeriods in dining_data['filters']['diningFormFilter']['mealPeriods']:
-            search_times[mealPeriods['key']] = mealPeriods['value']
+        filters = dining_data.get('filters') or {}
 
-        for mealTimes in dining_data['filters']['diningFormFilter']['times']:
-            search_times[mealTimes['key']] = mealTimes['value']
+    # try multiple likely keys; Disney may have renamed this block
+    df = (
+        filters.get('diningFormFilter') or
+        filters.get('diningReservationFormFilter') or
+        filters.get('reservationFormFilter') or
+        {}
+    )
 
-        return search_times
+    # Try both old/new field names; default to empty list to avoid KeyError
+    for mp in (df.get('mealPeriods') or df.get('mealPeriodsV2') or []):
+        # items might be dicts with key/value, or already strings — guard both
+        k = mp.get('key') if isinstance(mp, dict) else str(mp)
+        v = mp.get('value') if isinstance(mp, dict) else str(mp)
+        if k is not None and v is not None:
+            search_times[k] = v
+
+    for t in (df.get('times') or df.get('timesV2') or []):
+        k = t.get('key') if isinstance(t, dict) else str(t)
+        v = t.get('value') if isinstance(t, dict) else str(t)
+        if k is not None and v is not None:
+            search_times[k] = v
+
+    return search_times
 
     def get_party_size(self):
         """
